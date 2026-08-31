@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>Rack</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Rack">
+<meta name="theme-color" content="#1C242D">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#1C242D; --surface:#273240; --surface2:#33424F; --line:#3E5062;
+    --text:#F3F6F8; --muted:#9AAABA; --accent:#FF7A1A; --accent-ink:#1C1208;
+    --good:#5BD99A; --danger:#FF6B6B;
+    --tab:64px; --safe-b:env(safe-area-inset-bottom,0px); --safe-t:env(safe-area-inset-top,0px);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:Barlow,-apple-system,"Helvetica Neue",Arial,sans-serif;font-weight:500;font-size:17px;line-height:1.3;
+    overscroll-behavior:none;-webkit-user-select:none;user-select:none}
+  input,textarea,button{font:inherit;color:inherit}
+  input,textarea{-webkit-user-select:text;user-select:text}
+  button{border:0;background:none;padding:0;cursor:pointer}
+  a{color:var(--accent)}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  #app{min-height:100%;padding:calc(var(--safe-t) + 14px) 16px calc(var(--tab) + var(--safe-b) + 24px)}
+  header.top{display:flex;align-items:center;gap:12px;margin-bottom:18px;min-height:44px}
+  header.top h1{margin:0;font-size:30px;font-weight:800;letter-spacing:-.02em;flex:1;line-height:1.1}
+  header.top h1 input{width:100%;background:none;border:0;border-bottom:2px solid transparent;padding:0;font:inherit;letter-spacing:inherit}
+  header.top h1 input:focus{border-bottom-color:var(--accent);outline:0}
+  .back{width:44px;height:44px;margin-left:-8px;display:grid;place-items:center;color:var(--muted);font-size:26px}
+  .sub{color:var(--muted);font-size:15px;margin:-10px 0 16px}
+
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 18px;border-radius:12px;
+    background:var(--surface2);font-weight:700;font-size:17px}
+  .btn.primary{background:var(--accent);color:var(--accent-ink)}
+  .btn.ghost{background:none;color:var(--accent)}
+  .btn.danger{color:var(--danger)}
+  .btn.block{width:100%}
+  .btn.small{min-height:36px;padding:0 12px;font-size:15px;border-radius:9px}
+  .stack{display:flex;flex-direction:column;gap:10px}
+  .actions{display:flex;gap:10px;margin-top:18px}
+  .actions .btn{flex:1}
+
+  /* rows */
+  .row{display:flex;align-items:center;gap:12px;background:var(--surface);border-radius:14px;padding:12px 12px 12px 14px;min-height:68px;position:relative}
+  .row.link{cursor:pointer}
+  .row .icon{width:44px;height:44px;border-radius:11px;background:var(--surface2);display:grid;place-items:center;font-size:24px;flex:none}
+  .row .body{flex:1;min-width:0}
+  .row .name{font-weight:700;font-size:18px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .row .meta{color:var(--muted);font-size:14px;margin-top:2px}
+  .row .chev{color:var(--muted);font-size:22px}
+  .row.dragging{z-index:5;box-shadow:0 12px 28px rgba(0,0,0,.45);background:var(--surface2)}
+  .row.shift{transition:transform .15s ease}
+  .handle{width:40px;height:52px;display:grid;place-items:center;color:var(--muted);touch-action:none;cursor:grab;flex:none;margin-right:-4px}
+  .handle svg{width:20px;height:20px}
+  .arrows{display:flex;flex-direction:column;gap:2px;flex:none}
+  .arrows button{width:38px;height:24px;border-radius:7px;background:var(--surface2);color:var(--text);font-size:13px;display:grid;place-items:center}
+  .arrows button:disabled{opacity:.3}
+  .remove{width:36px;height:36px;border-radius:9px;color:var(--muted);font-size:20px;display:grid;place-items:center;flex:none}
+  .remove:active{color:var(--danger)}
+
+  .empty{padding:36px 20px;text-align:center;color:var(--muted);border:2px dashed var(--line);border-radius:16px;font-size:16px}
+  .empty strong{display:block;color:var(--text);font-size:18px;margin-bottom:6px}
+
+  /* section headings */
+  h2{font-size:15px;font-weight:600;color:var(--muted);margin:26px 0 10px}
+
+  /* workout */
+  .ex{background:var(--surface);border-radius:16px;overflow:hidden}
+  .ex .head{display:flex;align-items:center;gap:12px;padding:14px;cursor:pointer;min-height:72px}
+  .ex .head .icon{width:44px;height:44px;border-radius:11px;background:var(--surface2);display:grid;place-items:center;font-size:24px;flex:none}
+  .ex .head .name{font-weight:700;font-size:19px}
+  .ex .head .meta{color:var(--muted);font-size:14px;margin-top:2px}
+  .ex .head .done{color:var(--good);font-weight:700;font-size:15px;white-space:nowrap}
+  .ex.open .head{border-bottom:1px solid var(--line)}
+  .ex .sets{padding:6px 14px 14px;display:none}
+  .ex.open .sets{display:block}
+  .last{color:var(--muted);font-size:14px;margin:6px 0 10px}
+  .last a{margin-left:8px}
+  .setrow{display:grid;grid-template-columns:34px 1fr 1fr 34px;gap:8px;align-items:center;padding:8px 0}
+  .setrow .n{color:var(--muted);font-weight:700;font-size:16px;text-align:center}
+  .stepper{display:grid;grid-template-columns:44px 1fr 44px;align-items:center;background:var(--surface2);border-radius:12px;height:56px;overflow:hidden}
+  .stepper button{height:56px;font-size:24px;font-weight:700;color:var(--accent)}
+  .stepper button:active{background:var(--line)}
+  .stepper .val{text-align:center;font-weight:800;font-size:22px;background:none;border:0;width:100%;padding:0;height:56px;-moz-appearance:textfield}
+  .stepper .val::-webkit-inner-spin-button{display:none}
+  .stepper .val:focus{outline:0;background:var(--line)}
+  .stepper .unit{font-size:12px;color:var(--muted);font-weight:600;text-align:center;line-height:1;margin-top:-4px}
+  .setrow .x{width:34px;height:44px;color:var(--muted);font-size:20px}
+  .addset{margin-top:8px}
+  .colhead{display:grid;grid-template-columns:34px 1fr 1fr 34px;gap:8px;color:var(--muted);font-size:13px;font-weight:600;text-align:center;margin-top:8px}
+
+  /* tabs */
+  nav.tabs{position:fixed;left:0;right:0;bottom:0;height:calc(var(--tab) + var(--safe-b));padding-bottom:var(--safe-b);
+    background:rgba(28,36,45,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line);display:flex;z-index:20}
+  nav.tabs button{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--muted);font-size:12px;font-weight:600}
+  nav.tabs button svg{width:26px;height:26px}
+  nav.tabs button.on{color:var(--accent)}
+  nav.tabs.hidden{display:none}
+
+  /* sheet / modal */
+  .scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:30;display:flex;align-items:flex-end}
+  .sheet{background:var(--bg);width:100%;max-height:88vh;border-radius:22px 22px 0 0;padding:14px 16px calc(var(--safe-b) + 20px);display:flex;flex-direction:column}
+  .sheet .grab{width:44px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 12px}
+  .sheet h3{margin:0 0 12px;font-size:22px;font-weight:800}
+  .sheet .scroll{overflow:auto;-webkit-overflow-scrolling:touch;flex:1;min-height:0}
+  .field{margin-bottom:12px}
+  .field label{display:block;font-size:14px;color:var(--muted);margin-bottom:5px;font-weight:600}
+  .field input,.field textarea{width:100%;background:var(--surface);border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;font-size:17px}
+  .field input:focus,.field textarea:focus{border-color:var(--accent);outline:0}
+  .field textarea{min-height:120px;font-family:ui-monospace,Menlo,monospace;font-size:14px}
+  .search{width:100%;background:var(--surface);border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;font-size:17px;margin-bottom:12px}
+  .search:focus{border-color:var(--accent);outline:0}
+  .emojis{display:grid;grid-template-columns:repeat(8,1fr);gap:6px}
+  .emojis button{height:44px;border-radius:10px;background:var(--surface);font-size:22px}
+  .emojis button.on{background:var(--accent)}
+  .pick{display:flex;align-items:center;gap:12px;padding:12px 6px;border-bottom:1px solid var(--line);cursor:pointer}
+  .pick .icon{width:40px;height:40px;border-radius:10px;background:var(--surface2);display:grid;place-items:center;font-size:22px;flex:none}
+  .pick .name{font-weight:700;flex:1}
+  .pick .plus{color:var(--accent);font-weight:800;font-size:22px;width:40px;text-align:center}
+  .pick .plus.added{color:var(--good);font-size:16px}
+  .hint{color:var(--muted);font-size:14px;margin:0 0 10px}
+
+  .toast{position:fixed;left:50%;bottom:calc(var(--tab) + var(--safe-b) + 16px);transform:translateX(-50%);background:var(--text);color:var(--bg);
+    padding:10px 16px;border-radius:12px;font-weight:700;z-index:40;pointer-events:none;opacity:0;transition:opacity .2s}
+  .toast.show{opacity:1}
+
+  /* history */
+  .hist .sets{color:var(--muted);font-size:15px;margin-top:4px}
+  .stat{display:flex;gap:10px;margin-bottom:16px}
+  .stat div{flex:1;background:var(--surface);border-radius:14px;padding:12px 14px}
+  .stat b{display:block;font-size:26px;font-weight:800;line-height:1.1}
+  .stat span{color:var(--muted);font-size:13px}
+
+  @media (prefers-reduced-motion:reduce){.row.shift{transition:none}.toast{transition:none}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<nav class="tabs" id="tabs"></nav>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ---------- data ---------- */
+const KEY='rack.v1';
+const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36);
+const normName=n=>String(n||'').toLowerCase().replace(/pendlum/g,'pendulum').replace(/thurst/g,'thrust').replace(/loaed/g,'loaded').replace(/flyes/g,'flys').replace(/dumbbell|dumbell/g,'db').replace(/lateral/g,'lat').replace(/skull crusher/g,'skullcrusher').replace(/sit-?ups?/g,'situp').replace(/[^a-z0-9]/g,'');
+const today=()=>new Date().toISOString().slice(0,10);
+const EMOJI=['🏋️','💪','🦾','🧍','🪢','🍑','🦵','🦶','🔥','♨️','🏃','🚣','🚴','🧘','🤸','⚡','🎯','⏱️','🏊','🥊','🚣','🚴','🧗'];
+
+function guessIcon(name){
+  const n=name.toLowerCase();
+  const map=[[/squat|leg|lunge|calf|hamstring|quad|glute|hip/,'🦵'],[/run|treadmill|sprint|jog/,'🏃'],[/row/,'🚣'],[/bike|cycle|spin/,'🚴'],
+    [/yoga|stretch|mobility/,'🧘'],[/plank|core|ab|crunch|sit-?up/,'🔥'],[/pull|chin|lat/,'🪢'],[/curl|bicep|tricep|arm/,'💪'],[/swim/,'🏊'],
+    [/box|punch|bag/,'🥊'],[/climb|rope/,'🧗'],[/jump|skip|burpee/,'🤸'],[/press|bench|deadlift|clean|snatch|shoulder|chest/,'🏋️']];
+  for(const [re,e] of map) if(re.test(n)) return e;
+  return '🏋️';
+}
+
+const BASE={"exercises":[{"id":"x001","name":"Standing Cable Chest Fly","icon":"🏋️","category":"Chest","video":"https://youtu.be/YVwvPy0opww"},{"id":"x002","name":"Smith Machine Flat Bench Press","icon":"🏋️","category":"Chest","video":"https://youtu.be/aseUiiLvR48"},{"id":"x003","name":"Smith Machine Incline Bench Press","icon":"🏋️","category":"Chest","video":"https://youtu.be/7bn2Mke92Jg"},{"id":"x004","name":"Seated Cable Fly","icon":"🏋️","category":"Chest","video":"https://youtu.be/LTpHvAP86Hw"},{"id":"x005","name":"Push Ups","icon":"🏋️","category":"Chest","video":"https://youtu.be/ThnELqxhhPI"},{"id":"x006","name":"Neutral Dumbbell Bench Press","icon":"🏋️","category":"Chest","video":"https://youtu.be/8mpvCY5BSiI"},{"id":"x007","name":"Chest Press Plate Loaded Machine","icon":"🏋️","category":"Chest","video":"https://youtu.be/EflInRWbT_I"},{"id":"x008","name":"Pec Deck Machine","icon":"🏋️","category":"Chest","video":"https://youtu.be/FR4w8kVSAQw"},{"id":"x009","name":"Flat Dumbbell Bench Press","icon":"🏋️","category":"Chest","video":"https://youtu.be/LTK4dYtoGEU"},{"id":"x010","name":"Incline Dumbbell Bench Press","icon":"🏋️","category":"Chest","video":"https://youtu.be/_fF8_JKPOv8"},{"id":"x011","name":"Cable Seated Chest Press","icon":"🏋️","category":"Chest","video":"https://youtu.be/7PV-CHZgUK0"},{"id":"x012","name":"D Handle Pec Deck","icon":"🏋️","category":"Chest","video":"https://youtu.be/wsju9qQTqZM"},{"id":"x013","name":"Inclined Cuffed Cable Flys","icon":"🏋️","category":"Chest","video":"https://youtu.be/B6117g2AH5I"},{"id":"x014","name":"Chest Press Machine","icon":"🏋️","category":"Chest","video":"https://youtu.be/BAlHkS6yYNU"},{"id":"x015","name":"Assisted Machine Dips","icon":"🏋️","category":"Chest","video":"https://youtu.be/rR98w1tur8U"},{"id":"x016","name":"Seated Side Raises","icon":"🧍","category":"Shoulders","video":"https://youtu.be/7erJalj7a18"},{"id":"x017","name":"Dumbbell Shoulder Press","icon":"🧍","category":"Shoulders","video":"https://youtu.be/_SFIYplUlGk"},{"id":"x018","name":"Lying Cuffed Cable Raises","icon":"🧍","category":"Shoulders","video":"https://youtu.be/hzaWCzgHC7I"},{"id":"x019","name":"Kettlebell Upright Row","icon":"🧍","category":"Shoulders","video":"https://youtu.be/walz6pBRdVo"},{"id":"x020","name":"Dumbbell Side Raises","icon":"🧍","category":"Shoulders","video":"https://youtu.be/wswMIXFAE-Q"},{"id":"x021","name":"D Handle Cable Side Raises","icon":"🧍","category":"Shoulders","video":"https://youtu.be/loZiLlwf1Zk"},{"id":"x022","name":"Cuffed Cable Crucifix Raises","icon":"🧍","category":"Shoulders","video":"https://youtu.be/YsJpi5hnLgU"},{"id":"x023","name":"EZ Bar Upright Row","icon":"🧍","category":"Shoulders","video":"https://youtu.be/pxLZkzogaDw"},{"id":"x024","name":"Dumbbell Front Raises","icon":"🧍","category":"Shoulders","video":"https://youtu.be/Jes0BhL5vQg"},{"id":"x025","name":"EZ Bar Front Raise","icon":"🧍","category":"Shoulders","video":"https://youtu.be/5_FDNhU4y_g"},{"id":"x026","name":"Single Arm Dumbbell Side Raise","icon":"🧍","category":"Shoulders","video":"https://youtu.be/pqJY7GtDf9s"},{"id":"x027","name":"Single Arm D Handle Cable Side Raise","icon":"🧍","category":"Shoulders","video":"https://youtu.be/qtNw2-_1Ys0"},{"id":"x028","name":"Single Arm Cuffed Cable Side Raise","icon":"🧍","category":"Shoulders","video":"https://youtu.be/Qmffmb5gSsY"},{"id":"x029","name":"Shoulder Press Plate Loaded Machine","icon":"🧍","category":"Shoulders","video":"https://youtu.be/M2n8HZ7mQeU"},{"id":"x030","name":"Shoulder Press Machine","icon":"🧍","category":"Shoulders","video":"https://youtu.be/V2zQQDdOyrw"},{"id":"x031","name":"Standing Overhead Press","icon":"🧍","category":"Shoulders","video":"https://youtu.be/Aox5EyckWwI"},{"id":"x032","name":"Standing Cable Cuffed Lateral Raises","icon":"🧍","category":"Shoulders","video":"https://youtu.be/ir89L2enItA"},{"id":"x033","name":"Rope Cable Front raise","icon":"🧍","category":"Shoulders","video":"https://youtu.be/zLHRSEqDGM8"},{"id":"x034","name":"Shoulder Press Smith Machine","icon":"🧍","category":"Shoulders","video":"https://youtu.be/Ili4_CeO8MI"},{"id":"x035","name":"Wide Grip Cable Row","icon":"🪢","category":"Back","video":"https://youtu.be/s1BZlfyp02A"},{"id":"x036","name":"Trap Bar Deadlift","icon":"🪢","category":"Back","video":"https://youtu.be/eiMnWT-GiQE"},{"id":"x037","name":"T Bar Row","icon":"🪢","category":"Back","video":"https://youtu.be/TeqsFLu2ic0"},{"id":"x038","name":"Chest Supported Dumbbell Row","icon":"🪢","category":"Back","video":"https://youtu.be/ZQj_6hoKm0w"},{"id":"x039","name":"Single Arm Dumbbell Row","icon":"🪢","category":"Back","video":"https://youtu.be/a2dF9Ay_uIc"},{"id":"x040","name":"Rope Pullover","icon":"🪢","category":"Back","video":"https://youtu.be/UNBKOXzhTYE"},{"id":"x041","name":"Barbell Rack Pulls","icon":"🪢","category":"Back","video":"https://youtu.be/WLOE82PEbh8"},{"id":"x042","name":"Back Row Plate Loaded Machine","icon":"🪢","category":"Back","video":"https://youtu.be/1MP84B08MjE"},{"id":"x043","name":"D Handle Cable Row","icon":"🪢","category":"Back","video":"https://youtu.be/ZyijH1S2OsE"},{"id":"x044","name":"Seated Cable Cuffed Pullover","icon":"🪢","category":"Back","video":"https://youtu.be/UzK4wq4shms"},{"id":"x045","name":"EZ Bar Cable Pullover","icon":"🪢","category":"Back","video":"https://youtu.be/EQWKsF_0CYk"},{"id":"x046","name":"Close Grip Pulldown","icon":"🪢","category":"Back","video":"https://youtu.be/L_AN6vA-Zck"},{"id":"x047","name":"Cable Close Grip Row","icon":"🪢","category":"Back","video":"https://youtu.be/C94yv7tK3Ps"},{"id":"x048","name":"Cable Reverse Flys","icon":"🪢","category":"Back","video":"https://youtu.be/SFXP780-xGY"},{"id":"x049","name":"Kneeling Rope Face Pulls","icon":"🪢","category":"Back","video":"https://youtu.be/bhvPwKaZ6Is"},{"id":"x050","name":"Barbell Bent Over Row","icon":"🪢","category":"Back","video":"https://youtu.be/kkiZIxSZL74"},{"id":"x051","name":"Lat Pulldown Machine","icon":"🪢","category":"Back","video":"https://youtu.be/e0KeHQ7aUqk"},{"id":"x052","name":"Assisted Machine Pull Ups","icon":"🪢","category":"Back","video":"https://youtu.be/TGBDGe8LSbI"},{"id":"x053","name":"Single Arm Plate Loaded Row","icon":"🪢","category":"Back","video":"https://youtu.be/n3Omxb_1p2A"},{"id":"x054","name":"Single Arm D Handle Cable Row","icon":"🪢","category":"Back","video":"https://youtu.be/EPcajavn7BI"},{"id":"x055","name":"Single Arm D Handle Lat Pulldown","icon":"🪢","category":"Back","video":"https://youtu.be/-2PW2ZEXaMA"},{"id":"x056","name":"Lower Back Extensions","icon":"🪢","category":"Back","video":"https://youtu.be/lKFlUJy-7RU"},{"id":"x057","name":"Rope Cable Row","icon":"🪢","category":"Back","video":"https://youtu.be/3pHNAixFHw4"},{"id":"x058","name":"Reverse Flys Machine","icon":"🪢","category":"Back","video":"https://youtu.be/Rhb9N1Cklq0"},{"id":"x059","name":"Lat Pulldown Plate Loaded Machine","icon":"🪢","category":"Back","video":"https://youtu.be/9sSfsFOCcEY"},{"id":"x060","name":"D Handle Pulldown","icon":"🪢","category":"Back","video":"https://youtu.be/X1ZGfg9dkLI"},{"id":"x061","name":"Chest Supported Dumbbell Bicep Curls","icon":"💪","category":"Biceps","video":"https://youtu.be/zXeqOthsbSo"},{"id":"x062","name":"EZ Bar Cable Curl","icon":"💪","category":"Biceps","video":"https://youtu.be/nGpLc8IUxJc"},{"id":"x063","name":"Dumbbell Hammer Curls","icon":"💪","category":"Biceps","video":"https://youtu.be/zZE_ed6zfVc"},{"id":"x064","name":"EZ Bar Bicep Curls","icon":"💪","category":"Biceps","video":"https://youtu.be/g83VnBnSuS8"},{"id":"x065","name":"Alternating Dumbbell Bicep Curls","icon":"💪","category":"Biceps","video":"https://youtu.be/b0ZdYehEQ5M"},{"id":"x066","name":"Cable D Handle Bicep curls","icon":"💪","category":"Biceps","video":"https://youtu.be/xcyL0ACo1Rk"},{"id":"x067","name":"Seated Dumbbell Curls","icon":"💪","category":"Biceps","video":"https://youtu.be/EDR9atxwkVU"},{"id":"x068","name":"Rope Cable Bicep Curl","icon":"💪","category":"Biceps","video":"https://youtu.be/4RrjBuch1qc"},{"id":"x069","name":"Seated Hammer Curls","icon":"💪","category":"Biceps","video":"https://youtu.be/qzctWhMj534"},{"id":"x070","name":"Kettlebell Bicep Curl","icon":"💪","category":"Biceps","video":"https://youtu.be/1n7qSh1vtLs"},{"id":"x071","name":"EZ Bar Preacher Curls","icon":"💪","category":"Biceps","video":"https://youtu.be/9UxDYoSMfdc"},{"id":"x072","name":"Single Arm D Handle Cable Curl","icon":"💪","category":"Biceps","video":"https://youtu.be/8QurVJTxZLw"},{"id":"x073","name":"EZ Bar D Handle Cable Curls","icon":"💪","category":"Biceps","video":"https://youtu.be/mRmQthgk330"},{"id":"x074","name":"EZ Bar Skull Crusher","icon":"🦾","category":"Triceps","video":"https://youtu.be/hBP4MHvWPBY"},{"id":"x075","name":"EZ Bar Cable Tricep Pushdown","icon":"🦾","category":"Triceps","video":"https://youtu.be/CwRVI1EEryM"},{"id":"x076","name":"EZ Bar Overhead Extensions","icon":"🦾","category":"Triceps","video":"https://youtu.be/S40KsGrw_A0"},{"id":"x077","name":"Floor Dumbbell Skull Crushers","icon":"🦾","category":"Triceps","video":"https://youtu.be/wYL5dtRgCaE"},{"id":"x078","name":"Cuffed Tricep Extensions","icon":"🦾","category":"Triceps","video":"https://youtu.be/DHAovLIJRcI"},{"id":"x079","name":"Bodyweight Bench Dips","icon":"🦾","category":"Triceps","video":"https://youtu.be/FHXT_peV3fY"},{"id":"x080","name":"Standing EZ Bar Overhead Extensions","icon":"🦾","category":"Triceps","video":"https://youtu.be/QKvb_Wc1vHk"},{"id":"x081","name":"Kettlebell Overhead Tricep Extensions","icon":"🦾","category":"Triceps","video":"https://youtu.be/hBX2EXJIjSg"},{"id":"x082","name":"Single Arm Rope Pushdown","icon":"🦾","category":"Triceps","video":"https://youtu.be/X1sn1hVcPEQ"},{"id":"x083","name":"D Handle EZ Bar Cable Pushdown","icon":"🦾","category":"Triceps","video":"https://youtu.be/d2UetuANFaQ"},{"id":"x084","name":"Single Arm Cuffed Tricep Pushdown","icon":"🦾","category":"Triceps","video":"https://youtu.be/Vs2MXko5Sp0"},{"id":"x085","name":"Single Arm D Handle Pushdown","icon":"🦾","category":"Triceps","video":"https://youtu.be/IRJ5cbt1Xyw"},{"id":"x086","name":"Rope Tricep Pushdown","icon":"🦾","category":"Triceps","video":"https://youtu.be/O3qE-AL2Wbk"},{"id":"x087","name":"Rope Overhead Extensions","icon":"🦾","category":"Triceps","video":"https://youtu.be/jd2QAsCsJ5I"},{"id":"x088","name":"Overhead Dumbbell Extensions","icon":"🦾","category":"Triceps","video":"https://youtu.be/AvCvwwkd774"},{"id":"x089","name":"Sumo Deadlift","icon":"🍑","category":"Glutes / Hams","video":"https://youtu.be/9MEli_GO7aM"},{"id":"x090","name":"Hip Thrust Plate Loaded Machine","icon":"🍑","category":"Glutes / Hams","video":"https://youtu.be/dtF-LjlS0CI"},{"id":"x091","name":"Lying Hamstring Curl Machine","icon":"🍑","category":"Glutes / Hams","video":"https://youtu.be/LuYGQkWLcvE"},{"id":"x092","name":"Kettlebell Swings","icon":"🍑","category":"Glutes / Hams","video":"https://youtu.be/vsh2N2uF3oo"},{"id":"x093","name":"Bench Barbell Hip Thrusts","icon":"🍑","category":"Glutes / Hams","video":"https://youtu.be/ZnnTjja7kTM"},{"id":"x094","name":"Floor Barbell Hip Thrusts","icon":"🍑","category":"Glutes / Hams","video":"https://youtu.be/-zQhuXX2vyM"},{"id":"x095","name":"Dumbbell Romanian Deadlifts","icon":"🍑","category":"Glutes / Hams","video":"https://youtu.be/JcmLMtsMk6o"},{"id":"x096","name":"Deadlift","icon":"🍑","category":"Glutes / Hams","video":"https://youtu.be/JEz32DBgdF8"},{"id":"x097","name":"Barbell Reverse Lunge","icon":"🍑","category":"Glutes / Hams","video":"https://youtu.be/v_4WUkb4xP8"},{"id":"x098","name":"Abductor Machine","icon":"🍑","category":"Glutes / Hams","video":"https://youtu.be/h01JtS73a0Q"},{"id":"x099","name":"Adductor Machine","icon":"🍑","category":"Glutes / Hams","video":"https://youtu.be/8RgAjNmd6us"},{"id":"x100","name":"Barbell Romanian Deadlift","icon":"🍑","category":"Glutes / Hams","video":"https://youtu.be/R-JOUu4lNkk"},{"id":"x101","name":"Leg Extension Machine","icon":"🦵","category":"Quads","video":"https://youtu.be/mJcdaZ81Rg0"},{"id":"x102","name":"Barbell Back Squat","icon":"🦵","category":"Quads","video":"https://youtu.be/EtPBr8ytn9E"},{"id":"x103","name":"Hack Squat","icon":"🦵","category":"Quads","video":"https://youtu.be/nyPYdN0UhMQ"},{"id":"x104","name":"Front Foot Elevated Lunge","icon":"🦵","category":"Quads","video":"https://youtu.be/TyXE58LTIJA"},{"id":"x105","name":"Dumbbell Goblet Squat","icon":"🦵","category":"Quads","video":"https://youtu.be/2tQ6gWvwJJE"},{"id":"x106","name":"Standing Dumbbell Lunge","icon":"🦵","category":"Quads","video":"https://youtu.be/_FXaUcpqTU4"},{"id":"x107","name":"Smith Machine Squat","icon":"🦵","category":"Quads","video":"https://youtu.be/3AeqSUIGGok"},{"id":"x108","name":"Smith Machine Split Squat","icon":"🦵","category":"Quads","video":"https://youtu.be/X7uYDovJFkA"},{"id":"x109","name":"Front Squat Barbell","icon":"🦵","category":"Quads","video":"https://youtu.be/Ta8KAmbmFXU"},{"id":"x110","name":"Leg Press Machine","icon":"🦵","category":"Quads","video":"https://youtu.be/DE4opaBQlOc"},{"id":"x111","name":"Kettlebell Goblet Squat","icon":"🦵","category":"Quads","video":"https://youtu.be/klcP5QFL8ms"},{"id":"x112","name":"Kettlebell Standing Lunge","icon":"🦵","category":"Quads","video":"https://youtu.be/Jby3JdfWZCU"},{"id":"x113","name":"Bulgarian Split Squat","icon":"🦵","category":"Quads","video":"https://youtu.be/zIyPxIJWfvU"},{"id":"x114","name":"Standing Calf Raise","icon":"🦶","category":"Calves","video":"https://youtu.be/Gs1Kbk-8Cko"},{"id":"x115","name":"Russian Twists","icon":"🔥","category":"Abdominals","video":"https://youtu.be/TW6fy7Hsuwg"},{"id":"x116","name":"Oblique Heel Touches","icon":"🔥","category":"Abdominals","video":"https://youtu.be/6IS4ZPesZb4"},{"id":"x117","name":"Leg Raises With Crunch","icon":"🔥","category":"Abdominals","video":"https://youtu.be/6gcIG8pRhwA"},{"id":"x118","name":"Head To Toe Sit Ups","icon":"🔥","category":"Abdominals","video":"https://youtu.be/MfJqokFOv6w"},{"id":"x119","name":"Rolled Up Mat Ab Crunch","icon":"🔥","category":"Abdominals","video":"https://youtu.be/4mttEjfD7eg"},{"id":"x120","name":"Leg Raises","icon":"🔥","category":"Abdominals","video":"https://youtu.be/sQNh9M4Y2ug"},{"id":"x121","name":"Cable Oblique Twists","icon":"🔥","category":"Abdominals","video":"https://youtu.be/priPJJvAhXo"},{"id":"x122","name":"Cable Ab Crunch","icon":"🔥","category":"Abdominals","video":"https://youtu.be/WBCwfIjV0M0"},{"id":"x123","name":"Dumbbell Warm Up","icon":"♨️","category":"Warm Up","video":"https://youtu.be/8BDo5dEbPoo"},{"id":"x124","name":"Banded Gym Warm Up","icon":"♨️","category":"Warm Up","video":"https://youtu.be/sIdT8NPi9jk"},{"id":"x125","name":"Lower Body Warm Up","icon":"♨️","category":"Warm Up","video":"https://youtu.be/f67Kuia5X28"},{"id":"x126","name":"Lat Raise Machine","icon":"🧍","category":"Shoulders","video":""},{"id":"x127","name":"DB Skullcrusher","icon":"🦾","category":"Triceps","video":""},{"id":"x128","name":"Straight Bar Pushdown","icon":"🦾","category":"Triceps","video":""},{"id":"x129","name":"Seated Iso Row","icon":"🪢","category":"Back","video":""},{"id":"x130","name":"JPG Pulldown","icon":"🪢","category":"Back","video":""},{"id":"x131","name":"Lying Bench Bar Curl","icon":"💪","category":"Biceps","video":""},{"id":"x132","name":"Belted Squat RDLs","icon":"🍑","category":"Glutes / Hams","video":""},{"id":"x133","name":"Seated Leg Curl","icon":"🍑","category":"Glutes / Hams","video":""},{"id":"x134","name":"Hack Squat Calf Raises","icon":"🦶","category":"Calves","video":""},{"id":"x135","name":"Pendulum Squat","icon":"🦵","category":"Quads","video":""},{"id":"x136","name":"Double Cable Incline Curls","icon":"💪","category":"Biceps","video":""},{"id":"x137","name":"Decline Chest Press","icon":"🏋️","category":"Chest","video":""},{"id":"x138","name":"Ab Cycles, Sit Up, Plank Circuit","icon":"🔥","category":"Abdominals","video":""},{"id":"x139","name":"Iso Low Row","icon":"🪢","category":"Back","video":""}]}; // exercise library shipped with the app (names, muscle groups, video links)
+function seed(){ return {exercises:BASE.exercises.map(e=>({...e})),sessions:[],logs:[],active:null,plan:null,lib:1}; }
+function upgrade(d){ // bring older saves up to date without touching logs
+  d.logs=d.logs||[]; d.sessions.forEach(s=>s.targets=s.targets||{});
+  if(!d.lib){ const names=new Set(d.exercises.map(e=>e.name.toLowerCase()));
+    BASE.exercises.forEach(e=>{ const ex=d.exercises.find(x=>normName(x.name)===normName(e.name)); if(ex){ if(!ex.video) ex.video=e.video; if(!ex.category) ex.category=e.category; } else if(!names.has(e.name.toLowerCase())) d.exercises.push({...e}); });
+    d.sessions=d.sessions.filter(s=>!(s.name==='Push day'&&!d.logs.some(l=>l.sessionId===s.id))); d.lib=1; }
+  return d;
+}
+function load(){ try{ const d=JSON.parse(localStorage.getItem(KEY)); if(d&&d.exercises) return upgrade(d); }catch(e){} return seed(); }
+function save(){ localStorage.setItem(KEY,JSON.stringify(db)); }
+const exById=id=>db.exercises.find(e=>e.id===id);
+const sessById=id=>db.sessions.find(s=>s.id===id);
+
+/* ---------- plans (level 2: per-person plan files / share links) ---------- */
+const b64dec=s=>{ const bin=atob(s.replace(/-/g,'+').replace(/_/g,'/')); const u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i); return JSON.parse(new TextDecoder().decode(u)); };
+function planFromText(t){ // accepts a plan id, a URL with ?plan= or #plan=, raw JSON, or a bare share token
+  t=(t||'').trim(); if(!t) return null;
+  if(t.startsWith('{')) return {json:JSON.parse(t)};
+  const h=t.match(/#plan=([A-Za-z0-9_\-]+)/); if(h) return {json:b64dec(h[1])};
+  const q=t.match(/[?&]plan=([^&#]+)/); if(q) t=decodeURIComponent(q[1]);
+  if(/^https?:\/\//.test(t)) return {url:t};
+  if(/^[A-Za-z0-9_\-]{60,}$/.test(t)) return {json:b64dec(t)};
+  return {url:`plans/${t.replace(/\.json$/,'')}.json`};
+}
+async function fetchPlan(ref){ if(ref.json) return ref.json; const r=await fetch(ref.url,{cache:'no-store'}); if(!r.ok) throw new Error(r.status); return r.json(); }
+function validPlan(p){ return p&&p.format==='rack-plan-1'&&Array.isArray(p.exercises)&&Array.isArray(p.sessions)&&p.id&&p.name; }
+function applyPlan(p){
+  const idmap={};
+  p.exercises.forEach(e=>{ let ex=db.exercises.find(x=>normName(x.name)===normName(e.name));
+    if(ex){ if(e.video) ex.video=e.video; if(e.category&&!ex.category) ex.category=e.category; }
+    else { ex={id:uid(),name:e.name.trim(),icon:e.icon||guessIcon(e.name),category:e.category||'',video:e.video||''}; db.exercises.push(ex); }
+    idmap[e.id]=ex.id; });
+  p.sessions.forEach(s=>{ let ex=db.sessions.find(x=>x.id===s.id||(x.planId===p.id&&x.name.toLowerCase()===s.name.toLowerCase()));
+    const items=s.items.map(i=>idmap[i]).filter(Boolean); const targets={}; Object.entries(s.targets||{}).forEach(([k,v])=>{ if(idmap[k]) targets[idmap[k]]=v; });
+    if(ex){ ex.name=s.name; ex.items=items; ex.targets=targets; ex.planId=p.id; } else db.sessions.push({id:s.id||uid(),name:s.name,items,targets,planId:p.id}); });
+  db.plan={id:p.id,name:p.name,version:Number(p.version)||1}; save();
+}
+async function loadPlan(ref,{quiet=false}={}){
+  let p; try{ p=await fetchPlan(ref); }catch(e){ if(!quiet) toast("Couldn't load that plan — check the link and that you're online"); return; }
+  if(!validPlan(p)){ if(!quiet) toast("That isn't a Rack plan"); return; }
+  const v=Number(p.version)||1;
+  if(db.plan&&db.plan.id===p.id){ if(db.plan.version>=v) { if(!quiet) toast('This plan is already loaded'); return; }
+    if(!confirm(`"${p.name}" has been updated. Apply the new version? Your history is kept.`)) { db.plan.version=v; save(); return; } }
+  else if(db.sessions.length&&!confirm(`Load "${p.name}"? It will add its sessions and exercises. Your history is kept.`)) return;
+  applyPlan(p); ui.view='sessions'; render(); toast(`Loaded ${p.name}`);
+}
+function planFromLocation(){ const h=location.hash.match(/^#plan=(.+)$/); const q=new URLSearchParams(location.search).get('plan'); return h?{json:(()=>{try{return b64dec(h[1]);}catch{return null;}})()}:(q?planFromText(q):null); }
+
+let db=load(); save();
+const _p=planFromLocation(); if(_p&&(_p.json||_p.url)) loadPlan(_p,{quiet:!!(db.plan)});
+
+
+
+
+/* ---------- ui state ---------- */
+let ui={view:'sessions', sessionId:null, expanded:null, q:'', histId:null};
+let modal=null;
+
+function go(view,extra={}){ ui={...ui,view,...extra}; render(); window.scrollTo(0,0); }
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),1600); }
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtDate=d=>new Date(d+'T12:00').toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'});
+const summarise=sets=>sets.filter(s=>s.reps>0).map(s=>`${s.reps}×${s.kg}`).join(', ');
+
+/* ---------- icons ---------- */
+const I={
+  sessions:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>',
+  library:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 8v8M18 8v8M3 10v4M21 10v4M6 12h12"/></svg>',
+  history:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  handle:'<svg viewBox="0 0 20 20" fill="currentColor"><circle cx="7" cy="4" r="1.6"/><circle cx="13" cy="4" r="1.6"/><circle cx="7" cy="10" r="1.6"/><circle cx="13" cy="10" r="1.6"/><circle cx="7" cy="16" r="1.6"/><circle cx="13" cy="16" r="1.6"/></svg>'
+};
+
+/* ---------- render ---------- */
+function render(){
+  const app=document.getElementById('app');
+  const v=ui.view;
+  app.innerHTML = v==='sessions'?viewSessions(): v==='session'?viewSession(): v==='workout'?viewWorkout():
+                  v==='library'?viewLibrary(): v==='history'?viewHistory(): v==='histItem'?viewHistItem():'';
+  const tabs=document.getElementById('tabs');
+  tabs.classList.toggle('hidden', v==='workout');
+  const tab = ['session','sessions'].includes(v)?'sessions':(v==='histItem'?'history':v);
+  tabs.innerHTML=[['sessions','Sessions'],['library','Exercises'],['history','History']].map(([k,l])=>
+    `<button class="${tab===k?'on':''}" data-go="${k}">${I[k]}${l}</button>`).join('');
+  renderModal();
+  if(v==='session') enableReorder(app.querySelector('#items'));
+}
+
+function viewSessions(){
+  const list=db.sessions.map(s=>{
+    const last=db.logs.filter(l=>l.sessionId===s.id).sort((a,b)=>b.date.localeCompare(a.date))[0];
+    return `<div class="row link" data-open="${s.id}">
+      <div class="icon">${esc(s.items.length?exById(s.items[0])?.icon||'🏋️':'🏋️')}</div>
+      <div class="body"><div class="name">${esc(s.name)}</div>
+      <div class="meta">${s.items.length} exercise${s.items.length===1?'':'s'}${last?' · last done '+fmtDate(last.date):''}</div></div>
+      <div class="chev">›</div></div>`;}).join('');
+  const active=db.active?`<button class="btn primary block" data-resume>Resume ${esc(sessById(db.active.sessionId)?.name||'workout')} →</button>`:'';
+  return `<header class="top"><h1>Sessions</h1><button class="btn small" data-new-session>+ New</button></header>
+    ${db.plan?`<p class="sub">${esc(db.plan.name)}</p>`:''}<div class="stack">${active}${list||`<div class="empty"><strong>No sessions yet</strong>Create one with the + button, or if you've been sent a plan link, tap below.<div style="margin-top:14px"><button class="btn small" data-load-plan>Load a plan link</button></div></div>`}</div>`;
+}
+
+function viewSession(){
+  const s=sessById(ui.sessionId); if(!s) return viewSessions();
+  const items=s.items.map((id,i)=>{const e=exById(id); if(!e) return '';
+    return `<div class="row" data-id="${id}">
+      <div class="handle" aria-label="Drag to reorder">${I.handle}</div>
+      <div class="icon">${esc(e.icon)}</div>
+      <div class="body" data-target="${id}"><div class="name">${esc(e.name)}</div><div class="meta">${tgtText(s,id)||esc(e.category||'')}${tgtText(s,id)?'':' · tap to set a target'}</div></div>
+      <div class="arrows"><button data-move="${i}:-1" ${i===0?'disabled':''} aria-label="Move up">▲</button><button data-move="${i}:1" ${i===s.items.length-1?'disabled':''} aria-label="Move down">▼</button></div>
+      <button class="remove" data-remove="${i}" aria-label="Remove">×</button>
+    </div>`;}).join('');
+  return `<header class="top"><button class="back" data-go="sessions">‹</button>
+      <h1><input value="${esc(s.name)}" data-rename aria-label="Session name"></h1>
+      <button class="btn small danger" data-del-session>Delete</button></header>
+    <p class="sub">Drag the dots or use the arrows to reorder.</p>
+    <div class="stack" id="items">${items||`<div class="empty"><strong>Nothing here yet</strong>Add exercises from your list below.</div>`}</div>
+    <div class="actions"><button class="btn" data-add-ex>+ Add exercise</button>
+    <button class="btn primary" data-start ${s.items.length?'':'disabled'}>Start workout</button></div>`;
+}
+
+const tgtText=(s,id)=>{ const t=s.targets&&s.targets[id]; return t?`${t.sets} sets × ${t.reps||'—'} reps`:''; };
+function defaultSet(w,exId){ const t=sessById(w.sessionId)?.targets?.[exId]; const lo=t&&parseInt(t.reps); return {reps:lo||10,kg:20}; }
+function lastSets(exId,excludeLogId){
+  const logs=db.logs.filter(l=>l.id!==excludeLogId && l.entries[exId]?.some(x=>x.reps>0)).sort((a,b)=>b.date.localeCompare(a.date));
+  return logs[0]?{date:logs[0].date,sets:logs[0].entries[exId]}:null;
+}
+
+function viewWorkout(){
+  const w=db.active; if(!w) return viewSessions();
+  const s=sessById(w.sessionId);
+  const cards=(s?s.items:Object.keys(w.entries)).map(id=>{const e=exById(id); if(!e) return '';
+    const sets=w.entries[id]||[]; const open=ui.expanded===id; const prev=lastSets(id);
+    const rows=sets.map((st,i)=>`<div class="setrow">
+        <div class="n">${i+1}</div>
+        <div class="stepper"><button data-step="${id}:${i}:reps:-1">−</button><div><input class="val" type="number" inputmode="numeric" value="${st.reps}" data-val="${id}:${i}:reps"><div class="unit">reps</div></div><button data-step="${id}:${i}:reps:1">+</button></div>
+        <div class="stepper"><button data-step="${id}:${i}:kg:-2.5">−</button><div><input class="val" type="number" inputmode="decimal" step="0.5" value="${st.kg}" data-val="${id}:${i}:kg"><div class="unit">kg</div></div><button data-step="${id}:${i}:kg:2.5">+</button></div>
+        <button class="x" data-delset="${id}:${i}" aria-label="Remove set">×</button></div>`).join('');
+    return `<div class="ex ${open?'open':''}" data-ex="${id}">
+      <div class="head" data-toggle="${id}"><div class="icon">${esc(e.icon)}</div>
+        <div class="body" style="flex:1"><div class="name">${esc(e.name)}</div>
+        <div class="meta">${sets.filter(x=>x.reps>0).length?summarise(sets):'Tap to log sets'}</div></div>
+        ${sets.filter(x=>x.reps>0).length?`<div class="done">${sets.filter(x=>x.reps>0).length} set${sets.filter(x=>x.reps>0).length===1?'':'s'} ✓</div>`:''}</div>
+      <div class="sets">
+        <div class="last">${s&&tgtText(s,id)?`Target: ${tgtText(s,id)}. `:''}${prev?`Last time (${fmtDate(prev.date)}): ${summarise(prev.sets)}`:'First time logging this'}${e.video?`<a href="${esc(e.video)}" target="_blank" rel="noopener">Watch video ↗</a>`:''}</div>
+        ${rows}
+        <div class="actions" style="margin-top:6px"><button class="btn addset" data-addset="${id}">+ Add set</button>${!sets.length?(prev?`<button class="btn ghost" data-copylast="${id}">Repeat last time</button>`:(s&&s.targets&&s.targets[id]?`<button class="btn ghost" data-setup="${id}">Set up ${s.targets[id].sets} sets</button>`:'')):''}</div>
+      </div></div>`;}).join('');
+  return `<header class="top"><button class="back" data-go="sessions">‹</button><h1>${esc(s?s.name:'Workout')}</h1>
+      <button class="btn small ghost" data-date>${fmtDate(w.date)}</button></header>
+    <div class="stack">${cards}</div>
+    <div class="actions"><button class="btn danger" data-discard>Discard</button><button class="btn primary" data-finish>Finish workout</button></div>`;
+}
+
+function viewLibrary(){
+  const q=ui.q.trim().toLowerCase();
+  const list=db.exercises.filter(e=>!q||e.name.toLowerCase().includes(q)||(e.category||'').toLowerCase().includes(q))
+    .sort((a,b)=>a.name.localeCompare(b.name)).map(e=>`<div class="row link" data-edit="${e.id}">
+      <div class="icon">${esc(e.icon)}</div><div class="body"><div class="name">${esc(e.name)}</div>
+      <div class="meta">${esc(e.category||'')}${e.video?(e.category?' · ':'')+'has video':''}</div></div><div class="chev">›</div></div>`).join('');
+  return `<header class="top"><h1>Exercises</h1><button class="btn small" data-new-ex>+ New</button></header>
+    <input class="search" placeholder="Search" value="${esc(ui.q)}" data-search>
+    <div class="stack">${list||`<div class="empty"><strong>No matches</strong>Try another name, or add a new exercise.</div>`}</div>
+    <h2>Your data</h2>
+    <div class="stack">
+      <div class="actions" style="margin-top:0"><button class="btn" data-load-plan>Load a plan link</button><button class="btn" data-load-plan-file>Load a plan file</button></div>
+      <button class="btn block" data-import>Import from a spreadsheet</button>
+      <div class="actions" style="margin-top:0"><button class="btn" data-export>Export backup</button><button class="btn" data-restore>Restore backup</button></div>
+    </div>`;
+}
+
+function viewHistory(){
+  const logs=[...db.logs].sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id));
+  const month=logs.filter(l=>l.date.slice(0,7)===today().slice(0,7)).length;
+  const list=logs.map(l=>{const s=sessById(l.sessionId); const n=Object.values(l.entries).filter(x=>x.some(y=>y.reps>0)).length;
+    return `<div class="row link hist" data-hist="${l.id}"><div class="body"><div class="name">${esc(l.name||s?.name||'Workout')}</div>
+      <div class="meta">${fmtDate(l.date)} · ${n} exercise${n===1?'':'s'}</div></div><div class="chev">›</div></div>`;}).join('');
+  return `<header class="top"><h1>History</h1></header>
+    <div class="stat"><div><b>${logs.length}</b><span>workouts logged</span></div><div><b>${month}</b><span>this month</span></div></div>
+    <div class="stack">${list||`<div class="empty"><strong>Nothing logged yet</strong>Finish a workout and it will show up here.</div>`}</div>`;
+}
+
+function viewHistItem(){
+  const l=db.logs.find(x=>x.id===ui.histId); if(!l) return viewHistory();
+  const rows=Object.entries(l.entries).filter(([,sets])=>sets.some(s=>s.reps>0)).map(([id,sets])=>{const e=exById(id);
+    return `<div class="row"><div class="icon">${esc(e?.icon||'🏋️')}</div><div class="body"><div class="name">${esc(e?.name||'Removed exercise')}</div>
+      <div class="meta">${summarise(sets)}</div></div></div>`;}).join('');
+  return `<header class="top"><button class="back" data-go="history">‹</button><h1>${esc(l.name||sessById(l.sessionId)?.name||'Workout')}</h1></header>
+    <p class="sub">${fmtDate(l.date)}</p><div class="stack">${rows}</div>
+    <div class="actions"><button class="btn danger block" data-del-log>Delete this workout</button></div>`;
+}
+
+/* ---------- modals ---------- */
+function openModal(m){ modal=m; renderModal(); }
+function closeModal(){ modal=null; renderModal(); }
+function renderModal(){
+  let el=document.getElementById('modal');
+  if(!modal){ if(el) el.remove(); return; }
+  if(!el){ el=document.createElement('div'); el.id='modal'; el.className='scrim'; document.body.appendChild(el); }
+  el.innerHTML=`<div class="sheet"><div class="grab"></div>${modal.html()}</div>`;
+  modal.after && modal.after(el);
+}
+
+function exerciseForm(e){
+  const isNew=!e.id; const d={name:'',icon:'🏋️',category:'',video:'',...e};
+  openModal({
+    draft:d,
+    html(){ return `<h3>${isNew?'New exercise':'Edit exercise'}</h3><div class="scroll">
+      <div class="field"><label>Name</label><input data-f="name" value="${esc(d.name)}" placeholder="e.g. Incline dumbbell press"></div>
+      <div class="field"><label>Icon</label><div class="emojis">${EMOJI.map(x=>`<button class="${d.icon===x?'on':''}" data-emoji="${x}">${x}</button>`).join('')}</div></div>
+      <div class="field"><label>Muscle group or category (optional)</label><input data-f="category" value="${esc(d.category)}" placeholder="e.g. Chest"></div>
+      <div class="field"><label>Video link (optional)</label><input data-f="video" inputmode="url" value="${esc(d.video)}" placeholder="https://…"></div>
+      </div>
+      <div class="actions">${isNew?'':'<button class="btn danger" data-m-delete>Delete</button>'}<button class="btn" data-m-cancel>Cancel</button><button class="btn primary" data-m-save>Save</button></div>`; },
+    after(el){
+      el.querySelectorAll('[data-f]').forEach(inp=>inp.oninput=()=>{ d[inp.dataset.f]=inp.value; if(inp.dataset.f==='name'&&isNew&&!d._iconTouched){ d.icon=guessIcon(d.name); el.querySelectorAll('[data-emoji]').forEach(b=>b.classList.toggle('on',b.dataset.emoji===d.icon)); } });
+      el.querySelectorAll('[data-emoji]').forEach(b=>b.onclick=()=>{ d.icon=b.dataset.emoji; d._iconTouched=true; el.querySelectorAll('[data-emoji]').forEach(x=>x.classList.toggle('on',x===b)); });
+      el.querySelector('[data-m-cancel]').onclick=closeModal;
+      el.querySelector('[data-m-save]').onclick=()=>{ if(!d.name.trim()){ toast('Give it a name first'); return; }
+        const rec={id:d.id||uid(),name:d.name.trim(),icon:d.icon,category:d.category.trim(),video:d.video.trim()};
+        if(isNew) db.exercises.push(rec); else Object.assign(exById(rec.id),rec);
+        save(); closeModal(); render(); toast(isNew?'Added':'Saved'); };
+      const del=el.querySelector('[data-m-delete]'); if(del) del.onclick=()=>{ if(!confirm(`Delete "${d.name}"? It will be removed from your sessions too.`)) return;
+        db.exercises=db.exercises.filter(x=>x.id!==d.id); db.sessions.forEach(s=>s.items=s.items.filter(i=>i!==d.id)); save(); closeModal(); render(); toast('Deleted'); };
+      setTimeout(()=>{ if(isNew) el.querySelector('[data-f=name]').focus(); },50);
+    }
+  });
+}
+
+function pickerModal(sessionId){
+  const s=sessById(sessionId); let q='';
+  openModal({
+    html(){ return `<h3>Add exercise</h3><input class="search" placeholder="Search" data-pq value="${esc(q)}"><div class="scroll" data-plist></div>
+      <div class="actions"><button class="btn ghost" data-pnew>+ New exercise</button><button class="btn primary" data-pdone>Done</button></div>`; },
+    after(el){
+      const list=el.querySelector('[data-plist]');
+      const draw=()=>{ const t=q.trim().toLowerCase();
+        list.innerHTML=db.exercises.filter(e=>!t||e.name.toLowerCase().includes(t)).sort((a,b)=>a.name.localeCompare(b.name)).map(e=>{const n=s.items.filter(i=>i===e.id).length;
+          return `<div class="pick" data-pid="${e.id}"><div class="icon">${esc(e.icon)}</div><div class="name">${esc(e.name)}</div><div class="plus ${n?'added':''}">${n?'Added'+(n>1?' ×'+n:''):'+'}</div></div>`;}).join('')
+          ||`<p class="hint" style="padding:14px 0">Nothing matches "${esc(q)}".</p>`;
+        list.querySelectorAll('[data-pid]').forEach(p=>p.onclick=()=>{ s.items.push(p.dataset.pid); save(); draw(); }); };
+      draw();
+      const sq=el.querySelector('[data-pq]'); sq.oninput=()=>{ q=sq.value; draw(); };
+      el.querySelector('[data-pdone]').onclick=()=>{ closeModal(); render(); };
+      el.querySelector('[data-pnew]').onclick=()=>{ closeModal(); exerciseForm({}); };
+    }
+  });
+}
+
+function importModal(){
+  let text='';
+  openModal({
+    html(){ return `<h3>Import from a spreadsheet</h3>
+      <p class="hint">In Google Sheets select your rows, copy, and paste below. First column should be the name; a column with a link becomes the video. A header row is fine.</p>
+      <div class="scroll"><div class="field"><textarea data-t placeholder="Bench press	https://youtu.be/…&#10;Squat"></textarea></div><p class="hint" data-preview></p></div>
+      <div class="actions"><button class="btn" data-m-cancel>Cancel</button><button class="btn primary" data-m-go>Import</button></div>`; },
+    after(el){
+      const ta=el.querySelector('[data-t]'), pv=el.querySelector('[data-preview]');
+      ta.oninput=()=>{ text=ta.value; const r=parseSheet(text); pv.textContent=r.length?`${r.length} exercise${r.length===1?'':'s'} found · e.g. ${r[0].icon||guessIcon(r[0].name)} ${r[0].name}`:''; };
+      el.querySelector('[data-m-cancel]').onclick=closeModal;
+      el.querySelector('[data-m-go]').onclick=()=>{ const rows=parseSheet(text); if(!rows.length){ toast('Nothing to import'); return; }
+        let added=0,updated=0;
+        rows.forEach(r=>{ const ex=db.exercises.find(e=>normName(e.name)===normName(r.name));
+          if(ex){ if(r.video) ex.video=r.video; if(r.category) ex.category=r.category; if(r.icon) ex.icon=r.icon; updated++; }
+          else { db.exercises.push({id:uid(),name:r.name,icon:r.icon||guessIcon(r.name),category:r.category||'',video:r.video||''}); added++; } });
+        save(); closeModal(); render(); toast(`${added} added, ${updated} updated`); };
+      setTimeout(()=>ta.focus(),50);
+    }
+  });
+}
+
+function parseSheet(text){
+  const lines=text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean); if(!lines.length) return [];
+  const delim=lines[0].includes('\t')?'\t':',';
+  const split=l=>l.split(delim).map(c=>c.trim().replace(/^"|"$/g,''));
+  let rows=lines.map(split);
+  let map=null; const h=rows[0].map(c=>c.toLowerCase());
+  const find=(...ks)=>h.findIndex(c=>ks.some(k=>c.includes(k)));
+  if(h.some(c=>['name','exercise','activity'].some(k=>c.includes(k)))&&!/https?:/.test(rows[0].join(''))){
+    map={name:find('name','exercise','activity'),icon:find('icon','emoji'),category:find('category','muscle','group','type'),video:find('video','link','url')};
+    rows=rows.slice(1);
+  }
+  const isEmoji=s=>s&&s.length<=4&&/\p{Extended_Pictographic}/u.test(s);
+  return rows.map(c=>{
+    let name,icon='',category='',video='';
+    if(map){ name=c[map.name]||c[0]; icon=map.icon>=0?c[map.icon]:''; category=map.category>=0?c[map.category]:''; video=map.video>=0?c[map.video]:''; }
+    else { name=c[0]; c.slice(1).forEach(x=>{ if(/^https?:\/\//.test(x)) video=x; else if(isEmoji(x)) icon=x; else if(x&&!category) category=x; }); }
+    if(!isEmoji(icon)) icon='';
+    return name?{name,icon,category,video}:null;
+  }).filter(Boolean);
+}
+
+/* ---------- drag reorder (touch + mouse) ---------- */
+function enableReorder(list){
+  if(!list) return;
+  list.addEventListener('pointerdown',e=>{
+    const handle=e.target.closest('.handle'); if(!handle) return;
+    e.preventDefault();
+    const rows=[...list.querySelectorAll('.row')]; const item=handle.closest('.row');
+    const from=rows.indexOf(item); const rects=rows.map(r=>r.getBoundingClientRect());
+    const gap=rows.length>1?rects[1].top-rects[0].bottom:10; const h=rects[from].height+gap;
+    let to=from; const startY=e.clientY;
+    item.classList.add('dragging'); rows.forEach(r=>{ if(r!==item) r.classList.add('shift'); });
+    handle.setPointerCapture(e.pointerId);
+    const move=ev=>{ const dy=ev.clientY-startY; item.style.transform=`translateY(${dy}px)`;
+      const cy=rects[from].top+rects[from].height/2+dy; let t=from;
+      for(let i=0;i<rows.length;i++){ if(i===from) continue; const mid=rects[i].top+rects[i].height/2; if(i<from&&cy<mid){ t=Math.min(t,i); } if(i>from&&cy>mid){ t=Math.max(t,i); } }
+      if(t!==to){ to=t; rows.forEach((r,i)=>{ if(r===item) return; let s=0; if(i>from&&i<=to) s=-h; else if(i<from&&i>=to) s=h; r.style.transform=s?`translateY(${s}px)`:''; }); if(navigator.vibrate) navigator.vibrate(8); } };
+    const up=()=>{ handle.removeEventListener('pointermove',move); handle.removeEventListener('pointerup',up); handle.removeEventListener('pointercancel',up);
+      const s=sessById(ui.sessionId); if(s&&to!==from){ const [m]=s.items.splice(from,1); s.items.splice(to,0,m); save(); }
+      render(); };
+    handle.addEventListener('pointermove',move); handle.addEventListener('pointerup',up); handle.addEventListener('pointercancel',up);
+  });
+}
+
+/* ---------- events ---------- */
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-go],[data-open],[data-new-session],[data-resume],[data-del-session],[data-move],[data-remove],[data-add-ex],[data-start],[data-toggle],[data-step],[data-addset],[data-delset],[data-copylast],[data-setup],[data-target],[data-finish],[data-discard],[data-date],[data-new-ex],[data-edit],[data-import],[data-export],[data-restore],[data-hist],[data-del-log],[data-load-plan],[data-load-plan-file]');
+  if(!t) return; const d=t.dataset;
+  if(d.go){ if(d.go==='sessions'&&ui.view==='workout'){ save(); toast('Workout saved, resume anytime'); } go(d.go); }
+  else if(d.open) go('session',{sessionId:d.open});
+  else if(d.newSession!==undefined){ const s={id:uid(),name:'New session',items:[],targets:{}}; db.sessions.push(s); save(); go('session',{sessionId:s.id}); setTimeout(()=>{const i=document.querySelector('[data-rename]'); i&&i.select();},60); }
+  else if(d.resume!==undefined) go('workout');
+  else if(d.delSession!==undefined){ const s=sessById(ui.sessionId); if(confirm(`Delete "${s.name}"?`)){ db.sessions=db.sessions.filter(x=>x.id!==s.id); save(); go('sessions'); } }
+  else if(d.move){ const [i,dir]=d.move.split(':').map(Number); const s=sessById(ui.sessionId); const j=i+dir; if(j<0||j>=s.items.length) return; [s.items[i],s.items[j]]=[s.items[j],s.items[i]]; save(); render(); }
+  else if(d.remove!==undefined){ const s=sessById(ui.sessionId); s.items.splice(Number(d.remove),1); save(); render(); }
+  else if(d.addEx!==undefined) pickerModal(ui.sessionId);
+  else if(d.start!==undefined){ const s=sessById(ui.sessionId);
+    if(db.active&&db.active.sessionId!==s.id&&!confirm('You have an unfinished workout. Start a new one anyway?')) return;
+    if(!db.active||db.active.sessionId!==s.id){ db.active={id:uid(),sessionId:s.id,date:today(),entries:{}}; save(); }
+    go('workout',{expanded:s.items[0]}); }
+  else if(d.toggle) { ui.expanded=ui.expanded===d.toggle?null:d.toggle; render(); }
+  else if(d.step){ const [id,i,f,delta]=d.step.split(':'); const st=db.active.entries[id][i]; st[f]=Math.max(0,Math.round((Number(st[f])+Number(delta))*100)/100); save(); render(); }
+  else if(d.addset){ const w=db.active; const sets=w.entries[d.addset]||(w.entries[d.addset]=[]); const prev=sets[sets.length-1]||lastSets(d.addset)?.sets?.[0]||defaultSet(w,d.addset); sets.push({reps:prev.reps,kg:prev.kg}); save(); render(); }
+  else if(d.setup){ const w=db.active; const t=sessById(w.sessionId).targets[d.setup]; const base=defaultSet(w,d.setup); w.entries[d.setup]=Array.from({length:t.sets},()=>({...base})); save(); render(); }
+  else if(d.target){ const s=sessById(ui.sessionId); s.targets=s.targets||{}; const t=s.targets[d.target]||{sets:3,reps:'8-10'};
+    const v=prompt('Target for this exercise, as sets × rep range (e.g. 3 x 8-10). Leave blank to clear.',`${t.sets} x ${t.reps}`); if(v===null) return;
+    const mm=v.match(/^\s*(\d+)\s*[x×]\s*([\d\-–]+)\s*$/i); if(!v.trim()) delete s.targets[d.target]; else if(mm) s.targets[d.target]={sets:+mm[1],reps:mm[2].replace('–','-')}; else { toast('Use the form 3 x 8-10'); return; } save(); render(); }
+  else if(d.copylast){ const p=lastSets(d.copylast); if(p) db.active.entries[d.copylast]=p.sets.map(s=>({...s})); save(); render(); }
+  else if(d.delset){ const [id,i]=d.delset.split(':'); db.active.entries[id].splice(Number(i),1); save(); render(); }
+  else if(d.date!==undefined){ const v=prompt('Workout date (YYYY-MM-DD)',db.active.date); if(v&&/^\d{4}-\d{2}-\d{2}$/.test(v)){ db.active.date=v; save(); render(); } }
+  else if(d.finish!==undefined){ const w=db.active; const any=Object.values(w.entries).some(s=>s.some(x=>x.reps>0)); if(!any){ toast('Log at least one set first'); return; }
+    db.logs.push({id:w.id,sessionId:w.sessionId,name:sessById(w.sessionId)?.name,date:w.date,entries:w.entries}); db.active=null; save(); go('history'); toast('Workout logged'); }
+  else if(d.discard!==undefined){ if(confirm('Discard this workout? Nothing will be saved.')){ db.active=null; save(); go('sessions'); } }
+  else if(d.newEx!==undefined) exerciseForm({});
+  else if(d.edit) exerciseForm({...exById(d.edit)});
+  else if(d.import!==undefined) importModal();
+  else if(d.export!==undefined){ const blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`rack-backup-${today()}.json`; a.click(); }
+  else if(d.restore!==undefined){ const inp=document.createElement('input'); inp.type='file'; inp.accept='.json,application/json';
+    inp.onchange=()=>{ const f=inp.files[0]; if(!f) return; f.text().then(txt=>{ try{ const j=JSON.parse(txt); if(!j.exercises||!j.sessions) throw 0; if(confirm('Replace everything with this backup?')){ db=upgrade(j); save(); render(); toast('Restored'); } }catch{ toast("That file isn't a Rack backup"); } }); }; inp.click(); }
+  else if(d.loadPlan!==undefined){ const v=prompt('Paste the plan link (or the plan name your coach gave you)'); if(!v) return; let ref; try{ ref=planFromText(v); }catch{ toast("That link doesn't look right"); return; } if(ref) loadPlan(ref); }
+  else if(d.loadPlanFile!==undefined){ const inp=document.createElement('input'); inp.type='file'; inp.accept='.json,application/json';
+    inp.onchange=()=>{ const f=inp.files[0]; if(!f) return; f.text().then(txt=>{ try{ loadPlan({json:JSON.parse(txt)}); }catch{ toast("That file isn't a Rack plan"); } }); }; inp.click(); }
+  else if(d.hist) go('histItem',{histId:d.hist});
+  else if(d.delLog!==undefined){ if(confirm('Delete this workout from history?')){ db.logs=db.logs.filter(l=>l.id!==ui.histId); save(); go('history'); } }
+});
+
+document.addEventListener('input',e=>{
+  const t=e.target;
+  if(t.matches('[data-rename]')){ const s=sessById(ui.sessionId); s.name=t.value; save(); }
+  if(t.matches('[data-search]')){ ui.q=t.value; const pos=t.selectionStart; render(); const n=document.querySelector('[data-search]'); n.focus(); n.setSelectionRange(pos,pos); }
+});
+document.addEventListener('change',e=>{
+  const t=e.target; if(!t.matches('[data-val]')) return;
+  const [id,i,f]=t.dataset.val.split(':'); db.active.entries[id][i][f]=Math.max(0,Number(t.value)||0); save(); render();
+});
+document.addEventListener('focusin',e=>{ if(e.target.matches('.val')) e.target.select(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Enter'&&e.target.matches('input')) e.target.blur(); });
+
+render();
+</script>
+</body>
+</html>
